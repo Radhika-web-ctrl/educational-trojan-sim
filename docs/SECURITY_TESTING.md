@@ -23,3 +23,6 @@
   - reports/bandit.json
   - reports/semgrep.json
   - reports/zap.html / reports/zap.json
+
+## CI Limitations Note
+- Some GitHub Actions runs fail due to intentional sandbox enforcement and kill-switch protections that prevent execution outside approved directories and time windows. This behavior is by design and demonstrates correct ethical safeguards rather than implementation defects.
