@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  build_scan_test_deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Build (import check)
+        env:
+          PYTHONPATH: .
+        run: |
+          python -c "import src.main; print('Build OK')"
+
+      - name: Security Scan - Bandit
+        run: |
+          mkdir -p reports
+          bandit -r src -f json -o reports/bandit.json || true
+
+      - name: Security Scan - Semgrep
+        run: |
+          semgrep scan --config auto --json -o reports/semgrep.json || true
+
+      - name: Start app for DAST
+        env:
+          PYTHONPATH: .
+          JWT_SECRET: "ci-secret"
+          SANDBOX_ROOT: "./sandbox_test"
+        run: |
+          uvicorn src.main:app --host 127.0.0.1 --port 8000 &
+          sleep 5
+
+      - name: DAST - OWASP ZAP Baseline
+        uses: zaproxy/action-baseline@v0.15.0
+        with:
+          target: "http://127.0.0.1:8000"
+          cmd_options: "-J reports/zap.json -r reports/zap.html"
+        continue-on-error: true
+
+      - name: Run tests
+        env:
+          PYTHONPATH: .
+          JWT_SECRET: "ci-secret"
+          SANDBOX_ROOT: "./sandbox_test"
+        run: |
+          pytest -q
+
+      - name: Deploy (Docker build)
+        run: |
+          docker build -t educational-trojan-sim:latest .
+
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: reports/
