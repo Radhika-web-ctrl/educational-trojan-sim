@@ -5,12 +5,13 @@ import sqlite3
 from contextlib import contextmanager
 from typing import Iterator
 
-# Configurable DB path (defaults to app.sqlite)
-DB_PATH = os.getenv("DB_PATH", "app.sqlite")
+
+def _db_path() -> str:
+    return os.getenv("DB_PATH", "app.sqlite")
 
 
 def init_db() -> None:
-    with sqlite3.connect(DB_PATH) as conn:
+    with sqlite3.connect(_db_path()) as conn:
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS users (
@@ -50,7 +51,7 @@ def init_db() -> None:
 
 @contextmanager
 def db_conn() -> Iterator[sqlite3.Connection]:
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(_db_path())
     try:
         conn.row_factory = sqlite3.Row
         yield conn
