@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import os
 import sqlite3
-from typing import Iterator
 from contextlib import contextmanager
+from typing import Iterator
 
-DB_PATH = "app.sqlite"
+# Configurable DB path (defaults to app.sqlite)
+DB_PATH = os.getenv("DB_PATH", "app.sqlite")
 
 
 def init_db() -> None:
